@@ -65,8 +65,8 @@ def render_request():
 def render_request_done():
     with open('data/request.json', 'r', encoding='utf-8') as f:
         request_data = json.load(f)
-    if request.method == 'POST':
-        form = app_form.RequestForm()
+    form = app_form.RequestForm()
+    if request.method == 'POST' and form.validate_on_submit():
         request_info = {'name': form.name.data,
                         'phone': form.phone.data, 'time': form.times.data, 'goal': form.goals.data}
         request_data.append(request_info)
@@ -93,8 +93,8 @@ def render_form(id, day, time):
 def render_booking_done():
     with open('data/booking.json', 'r', encoding='utf-8') as f:
         booking_data = json.load(f)
-    if request.method == 'POST':
-        form = app_form.BookingForm()
+    form = app_form.BookingForm()
+    if request.method == 'POST' and form.validate_on_submit():
         booking_info = {'name': form.name.data, 'phone': form.phone.data, 'day': form.clientWeekday.data,
                         'time': form.clientTime.data}
 
