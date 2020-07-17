@@ -63,16 +63,16 @@ def render_request():
 
 @app.route('/request_done/', methods=['GET', 'POST'])
 def render_request_done():
+    form = app_form.RequestForm()
     with open('data/request.json', 'r', encoding='utf-8') as f:
         request_data = json.load(f)
-    form = app_form.RequestForm()
     if request.method == 'POST' and form.validate_on_submit():
         request_info = {'name': form.name.data,
                         'phone': form.phone.data, 'time': form.times.data, 'goal': form.goals.data}
         request_data.append(request_info)
         with open('data/request.json', 'w', encoding='utf-8') as f:
             json.dump(request_data, f, indent=4, ensure_ascii=False, )
-        return render_template('request_done.html', request_info=request_info)
+        return render_template('request_done.html', request_info=request_info, form=form)
     else:
         return render_template('request.html')
 
@@ -91,18 +91,16 @@ def render_form(id, day, time):
 
 @app.route('/booking_done/', methods=['GET', 'POST'])
 def render_booking_done():
+    form = app_form.BookingForm()
     with open('data/booking.json', 'r', encoding='utf-8') as f:
         booking_data = json.load(f)
-    form = app_form.BookingForm()
     if request.method == 'POST' and form.validate_on_submit():
         booking_info = {'name': form.name.data, 'phone': form.phone.data, 'day': form.clientWeekday.data,
                         'time': form.clientTime.data}
-
         booking_data.append(booking_info)
-
         with open('data/booking.json', 'w', encoding='utf-8') as f:
             json.dump(booking_data, f, indent=4, ensure_ascii=False)
-        return render_template('booking_done.html', booking_info=booking_info)
+        return render_template('booking_done.html', booking_info=booking_info, form=form)
     else:
         return render_template('booking.html')
 
