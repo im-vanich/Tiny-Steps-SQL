@@ -9,7 +9,7 @@ When responding to a request, data from the "database" must be read, and when sa
 2. Copy mock data to JSON file
     - Write a script that from the mock data in data.py will save it to our "database".
     
-3. Выведите страницу преподавателя
+3. Display teacher page
     - examine the mock data,
     - read instructor data from JSON file,
     - edit the template,
