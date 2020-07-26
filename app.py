@@ -1,10 +1,70 @@
 import random
 import json
+import os
 import app_form
 from flask import Flask, render_template, request
+from flask_sqlalchemy import SQLAlchemy
+from flask_migrate import Migrate
 
 app = Flask(__name__)
 app.secret_key = 'very-Secret-Key'
+app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL')
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+db = SQLAlchemy(app)
+migrate = Migrate(app, db)
+
+
+class Teacher(db.Model):
+    __tablename__ = 'teachers'
+
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(50), nullable=False)
+    about = db.Column(db.String, nullable=False)
+    rating = db.Column(db.Float, nullable=False)
+    picture = db.Column(db.String, nullable=False)
+    price = db.Column(db.Integer, nullable=False)
+    booking = db.relationship('Booking')
+
+
+class Booking(db.Model):
+    __tablename__ = 'booking'
+
+    id = db.Column(db.Integer, primary_key=True)
+    teacher_id = db.Column(db.Integer, db.ForeignKey('teachers.id'))
+    teacher = db.relationship('Teacher')
+    student_id = db.Column(db.Integer, db.ForeignKey('students.id'))
+    student = db.relationship('Student')
+    study_day = db.Column(db.DateTime, nullable=False)
+    study_time = db.Column(db.Time, nullable=False)
+
+
+class Request(db.Model):
+    __tablename__ = 'requests'
+
+    id = db.Column(db.Integer, primary_key=True)
+    goal_id = db.Column(db.Integer, db.ForeignKey('goals.id'))
+    goal = db.relationship('Goal')
+    free_time = db.Column(db.String, nullable=False)
+    student_id = db.Column(db.Integer, db.ForeignKey('students.id'))
+    student = db.relationship('Student')
+
+
+class Student(db.Model):
+    __tablename__ = 'students'
+
+    id = db.Column(db.Integer, primary_key=True)
+    student_name = db.Column(db.String, nullable=False, unique=True)
+    student_phone = db.Column(db.String, nullable=False, unique=True)
+    booking = db.relationship('Booking')
+    request = db.relationship('Request')
+
+
+class Goal(db.Model):
+    __tablename__ = 'goals'
+
+    id = db.Column(db.Integer, primary_key=True)
+    goal_to_study = db.Column(db.String, nullable=False)
+    db.relationship('Request')
 
 
 @app.route('/')
