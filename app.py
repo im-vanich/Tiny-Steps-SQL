@@ -8,10 +8,14 @@ from flask_migrate import Migrate
 
 app = Flask(__name__)
 app.secret_key = 'very-Secret-Key'
-app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL')
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///tiny.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app)
 migrate = Migrate(app, db)
+
+teachers_goal = db.Table('teachers_goal',
+                         db.Column('teacher_id', db.Integer, db.ForeignKey('teachers.id')),
+                         db.Column('goals_id', db.Integer, db.ForeignKey('goals.id')))
 
 
 class Teacher(db.Model):
@@ -24,6 +28,7 @@ class Teacher(db.Model):
     picture = db.Column(db.String, nullable=False)
     price = db.Column(db.Integer, nullable=False)
     booking = db.relationship('Booking')
+    goals = db.relationship('Goal', secondary=teachers_goal)
 
 
 class Booking(db.Model):
@@ -33,9 +38,9 @@ class Booking(db.Model):
     teacher_id = db.Column(db.Integer, db.ForeignKey('teachers.id'))
     teacher = db.relationship('Teacher')
     student_id = db.Column(db.Integer, db.ForeignKey('students.id'))
-    student = db.relationship('Student')
-    study_day = db.Column(db.DateTime, nullable=False)
-    study_time = db.Column(db.Time, nullable=False)
+    student = db.relationship('Student', back_populates='booking')
+    study_day = db.Column(db.String, nullable=False)
+    study_time = db.Column(db.String, nullable=False)
 
 
 class Request(db.Model):
@@ -55,7 +60,7 @@ class Student(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     student_name = db.Column(db.String, nullable=False, unique=True)
     student_phone = db.Column(db.String, nullable=False, unique=True)
-    booking = db.relationship('Booking')
+    booking = db.relationship('Booking', back_populates='student')
     request = db.relationship('Request')
 
 
@@ -65,15 +70,13 @@ class Goal(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     goal_to_study = db.Column(db.String, nullable=False)
     db.relationship('Request')
+    teachers = db.relationship('Teacher', secondary=teachers_goal)
 
 
 @app.route('/')
 def render_index():
-    with open('data/teachers.json', 'r') as f:
-        teachers_list = json.load(f)
-    teachers_random = random.sample(teachers_list, 6)
-
-    return render_template('index.html', teachers_random=teachers_random)
+    teacher = db.session.query(Teacher).order_by(Teacher.id).limit(6)
+    return render_template('index.html', teachers=teacher)
 
 
 @app.route('/goals/<goal>/')
@@ -97,20 +100,12 @@ def render_goals(goal):
 
 @app.route('/profiles/<int:id>/')
 def render_profiles(id):
-    free_days = {
-        'mon': 'Понедельник',
-        'tue': 'Вторник',
-        'wed': 'Среда',
-        'thu': 'Четверг',
-        'fri': 'Пятница',
-        'sat': 'Суббота',
-        'sun': 'Воскресенье'
-    }  # dict of weekday  for free days in profile
-    with open('data/teachers.json', 'r') as f:
-        teachers_list = json.load(f)
-    teachers_info = teachers_list[id]
-    day_info = teachers_info['free']
-    return render_template('profile.html', teachers_info=teachers_info, free_days=free_days, day_info=day_info, id=id)
+    teacher = db.session.query(Teacher).get_or_404(id)
+    with open('data/teachers.json', 'r', encoding='utf-8') as r:
+        teacher_time = json.load(r)
+    free_time = teacher_time[id]['free']
+
+    return render_template('profile.html', teacher=teacher, free_time=free_time)
 
 
 @app.route('/request/', methods=['GET', 'POST'])
@@ -139,30 +134,23 @@ def render_request_done():
 
 @app.route('/booking/<int:id>/<day>/<time>/', methods=['GET', 'POST'])
 def render_form(id, day, time):
-    with open('data/teachers.json', 'r') as f:
-        teachers_list = json.load(f)
-    teachers_info = teachers_list[id]
-    day = day
-    time = time
     form = app_form.BookingForm(clientTime=time, clientWeekday=day)
-
-    return render_template('booking.html', form=form, teachers_info=teachers_info, day=day, time=time)
-
-
-@app.route('/booking_done/', methods=['GET', 'POST'])
-def render_booking_done():
-    form = app_form.BookingForm()
-    with open('data/booking.json', 'r', encoding='utf-8') as f:
-        booking_data = json.load(f)
-    if request.method == 'POST' and form.validate_on_submit():
-        booking_info = {'name': form.name.data, 'phone': form.phone.data, 'day': form.clientWeekday.data,
-                        'time': form.clientTime.data}
-        booking_data.append(booking_info)
-        with open('data/booking.json', 'w', encoding='utf-8') as f:
-            json.dump(booking_data, f, indent=4, ensure_ascii=False)
-        return render_template('booking_done.html', booking_info=booking_info, form=form)
+    teacher = db.session.query(Teacher).get(id)
+    if request.method == 'POST':
+        name = form.name.data
+        phone = form.phone.data
+        time = form.clientTime.data
+        day = form.clientWeekday.data
+        teacher_id = form.clientTeacher.data
+        student = Student(student_name=name, student_phone=phone)
+        db.session.add(student)
+        db.session.commit()
+        booking = Booking(teacher_id=teacher_id, student_id=student.id, study_day=day, study_time=time)
+        db.session.add(booking)
+        db.session.commit()
+        return render_template('booking_done.html', name=name, phone=phone, day=day, time=time)
     else:
-        return render_template('booking.html')
+        return render_template('booking.html', form=form, day=day, time=time, teacher=teacher, id=teacher.id)
 
 
 if __name__ == '__main__':
