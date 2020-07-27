@@ -4,8 +4,8 @@ from wtforms.validators import InputRequired, Length
 
 
 class BookingForm(FlaskForm):
-    name = StringField('Вас зовут', [InputRequired(), Length(min=2, max=30)])
-    phone = StringField('Ваш телефон', [InputRequired(), Length(min=6, max=12)])
+    name = StringField('Вас зовут', [InputRequired(message='Введите корректное имя'), Length(min=2, max=30)])
+    phone = StringField('Ваш телефон', [InputRequired(message='Введите корректный номер телефона'), Length(min=6, max=12)])
     clientWeekday = HiddenField('clientWeekday', default='mon')
     clientTime = HiddenField('clientTime', default='12:00')
     clientTeacher = HiddenField('clientTeacher', default='10')
@@ -21,6 +21,6 @@ class RequestForm(FlaskForm):
                                                          ('3-5 часов в неделю', '3-5 часов в неделю'),
                                                          ('5-7 часов в неделю', '5-7 часов в неделю'),
                                                          ('7-10 часов в неделю', '7-10 часов в неделю')])
-    name = StringField('Вас зовут', [InputRequired(), Length(min=2, max=30)])
-    phone = StringField('Ваш телефон', [InputRequired(), Length(min=6, max=12)])
+    name = StringField('Вас зовут', [InputRequired(message='Введите корректное имя'), Length(min=2, max=30)])
+    phone = StringField('Ваш телефон', [InputRequired(message='Введите корректный номер телефона'), Length(min=6, max=12)])
     submit = SubmitField('Найдите мне преподавателя')

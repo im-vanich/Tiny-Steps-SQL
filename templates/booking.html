@@ -19,9 +19,15 @@
 
                     {{ form.name.label(class_='mb-1 mt-2') }}
                     {{ form.name(class_='form-control') }}
+                    {% for error in form.name.errors %}
+                        <span style="color: red;">[{{ error }}]</span>
+                    {% endfor %}
 
                     {{ form.phone.label(class_='mb-1 mt-2') }}
                     {{ form.phone(class_='form-control') }}
+                    {% for error in form.phone.errors %}
+                        <span style="color: red;">[{{ error }}]</span>
+                    {% endfor %}
 
                     {{ form.submit(class_='btn btn-primary btn-block mt-4') }}
                     {{ form.csrf_token }}
