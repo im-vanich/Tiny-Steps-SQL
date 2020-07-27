@@ -13,6 +13,8 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app)
 migrate = Migrate(app, db)
 
+# Models for database
+
 teachers_goal = db.Table('teachers_goal',
                          db.Column('teacher_id', db.Integer, db.ForeignKey('teachers.id')),
                          db.Column('goals_id', db.Integer, db.ForeignKey('goals.id')))
@@ -47,11 +49,10 @@ class Request(db.Model):
     __tablename__ = 'requests'
 
     id = db.Column(db.Integer, primary_key=True)
-    goal_id = db.Column(db.Integer, db.ForeignKey('goals.id'))
-    goal = db.relationship('Goal')
+    goal = db.Column(db.String, nullable=False)
     free_time = db.Column(db.String, nullable=False)
-    student_id = db.Column(db.Integer, db.ForeignKey('students.id'))
-    student = db.relationship('Student')
+    student_name = db.Column(db.String, nullable=False)
+    student_phone = db.Column(db.String, nullable=False)
 
 
 class Student(db.Model):
@@ -61,7 +62,6 @@ class Student(db.Model):
     student_name = db.Column(db.String, nullable=False, unique=True)
     student_phone = db.Column(db.String, nullable=False, unique=True)
     booking = db.relationship('Booking', back_populates='student')
-    request = db.relationship('Request')
 
 
 class Goal(db.Model):
@@ -69,33 +69,41 @@ class Goal(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
     goal_to_study = db.Column(db.String, nullable=False)
-    db.relationship('Request')
     teachers = db.relationship('Teacher', secondary=teachers_goal)
+
+
+class TeacherFeatures(db.Model):
+    __tablename__ = 'teacher_features'
+
+    id = db.Column(db.Integer, primary_key=True)
+    teacher_id = db.Column(db.Integer, db.ForeignKey("teachers.id"))
+    teacher = db.relationship("Teacher")
+    goal_id = db.Column(db.Integer, db.ForeignKey("goals.id"))
+    goal = db.relationship("Goal")
 
 
 @app.route('/')
 def render_index():
-    teacher = db.session.query(Teacher).order_by(Teacher.id).limit(6)
-    return render_template('index.html', teachers=teacher)
+    teacher = db.session.query(Teacher).order_by(Teacher.id).all()
+    teacher_random = random.sample(teacher, 6)
+    goals_query = db.session.query(Goal.goal_to_study).all()
+    goals_list = []
+    for goal in goals_query:
+        goals_list.append(goal[0])
+    return render_template('index.html', teachers=teacher_random, goals=goals_list)
 
 
 @app.route('/goals/<goal>/')
 def render_goals(goal):
-    with open('data/goals.json', 'r', encoding='utf-8') as f:  # read data from goals.json and equal goal info
-        goals_data = json.load(f)
-    for k, v in goals_data.items():
-        if k == goal:
-            target = v
-    with open('data/teachers.json', 'r') as f:
-        teachers_list = json.load(f)
-    teachers = []  # create list for teachers in goals
-    for teach in teachers_list:
-        for k, v in teach.items():
-            if k == 'goals':
-                if goal in v:
-                    teachers.append(teach)
+    goals_query = db.session.query(Goal.goal_to_study).all()
+    goals_list = []
+    for main_goal in goals_query:
+        goals_list.append(main_goal[0])
+    query_gol_id = db.session.query(Goal.id).filter(Goal.goal_to_study == goal).first()[0]
+    teacher_to_study = db.session.query(Teacher).join(TeacherFeatures).join(Goal).filter(
+        TeacherFeatures.goal_id == query_gol_id).all()
 
-    return render_template('goal.html', target=target, teachers=teachers)
+    return render_template('goal.html', goals=goals_list, teachers=teacher_to_study)
 
 
 @app.route('/profiles/<int:id>/')
@@ -111,32 +119,26 @@ def render_profiles(id):
 @app.route('/request/', methods=['GET', 'POST'])
 def render_request():
     form = app_form.RequestForm()
-    goals = form.goals
-    times = form.times
-    return render_template('request.html', form=form, goals=goals, times=times)
-
-
-@app.route('/request_done/', methods=['GET', 'POST'])
-def render_request_done():
-    form = app_form.RequestForm()
-    with open('data/request.json', 'r', encoding='utf-8') as f:
-        request_data = json.load(f)
     if request.method == 'POST' and form.validate_on_submit():
-        request_info = {'name': form.name.data,
-                        'phone': form.phone.data, 'time': form.times.data, 'goal': form.goals.data}
-        request_data.append(request_info)
-        with open('data/request.json', 'w', encoding='utf-8') as f:
-            json.dump(request_data, f, indent=4, ensure_ascii=False, )
-        return render_template('request_done.html', request_info=request_info, form=form)
+        goal = form.goals.data
+        time = form.times.data
+        name = form.name.data
+        phone = form.phone.data
+        request_for_study = Request(goal=goal, free_time=time, student_name=name, student_phone=phone)
+        db.session.add(request_for_study)
+        db.session.commit()
+        return render_template('request_done.html', form=form, goal=goal, time=time, name=name, phone=phone)
     else:
-        return render_template('request.html')
+        goals = form.goals
+        times = form.times
+        return render_template('request.html', form=form, goals=goals, times=times)
 
 
 @app.route('/booking/<int:id>/<day>/<time>/', methods=['GET', 'POST'])
 def render_form(id, day, time):
     form = app_form.BookingForm(clientTime=time, clientWeekday=day)
     teacher = db.session.query(Teacher).get(id)
-    if request.method == 'POST':
+    if request.method == 'POST' and form.validate_on_submit():
         name = form.name.data
         phone = form.phone.data
         time = form.clientTime.data

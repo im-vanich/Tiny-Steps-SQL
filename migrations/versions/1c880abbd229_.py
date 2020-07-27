@@ -52,11 +52,10 @@ def upgrade():
     )
     op.create_table('requests',
     sa.Column('id', sa.Integer(), nullable=False),
-    sa.Column('goal_id', sa.Integer(), nullable=True),
+    sa.Column('goal', sa.String(), nullable=False),
     sa.Column('free_time', sa.String(), nullable=False),
-    sa.Column('student_id', sa.Integer(), nullable=True),
-    sa.ForeignKeyConstraint(['goal_id'], ['goals.id'], ),
-    sa.ForeignKeyConstraint(['student_id'], ['students.id'], ),
+    sa.Column('student_name', sa.String(), nullable=False),
+    sa.Column('student_phone', sa.String(), nullable=False),
     sa.PrimaryKeyConstraint('id')
     )
     # ### end Alembic commands ###

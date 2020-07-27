@@ -1,14 +1,5 @@
 import json
-from app import Teacher, Student, Request, Goal, Booking, db
-
-
-# import data
-#
-# with open('data/goals.json', 'w', encoding='utf-8') as f:
-#     json.dump(data.goals, f, indent=4, ensure_ascii=False)
-#
-# with open('data/teachers.json', 'w', encoding='utf-8') as f:
-#     json.dump(data.teachers, f, indent=4, ensure_ascii=False)
+from app import Teacher, Student, Request, Goal, Booking, db, TeacherFeatures
 
 
 def load_db():
@@ -26,6 +17,14 @@ def load_db():
     for goal in goals:
         goal_to_study = Goal(goal_to_study=goal)
         db.session.add(goal_to_study)
+
+    for teacher in get_info:
+        teacher_list = teacher['goals']
+        for goal in teacher_list:
+            query_goal_id = db.session.query(Goal.id).filter(Goal.goal_to_study == goal).first()[0]
+            teacher_id = int(teacher['id'] + 1)
+            teacher_features = TeacherFeatures(teacher_id=teacher_id, goal_id=query_goal_id)
+            db.session.add(teacher_features)
 
     db.session.commit()
 
